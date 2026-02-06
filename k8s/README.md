@@ -57,7 +57,7 @@ If you modify the ConfigMap (`configmap-nginx.yaml`), you need to:
 
 After deployment, the website will be available at:
 - Internal: http://ca-lands.default.svc.cluster.local
-- External: https://nature.nrp-nautilus.io
+- External: https://ca-lands.nrp-nautilus.io
 
 ## Configuration
 

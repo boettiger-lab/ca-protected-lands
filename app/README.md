@@ -4,20 +4,18 @@ An interactive web application combining MapLibre GL JS for geospatial visualiza
 
 ## Features
 
-- **Interactive Map** with multiple global wetlands datasets:
-  - Global Wetlands Database (GLWD) - raster COG
-  - Nature's Contributions to People (NCP) - raster COG  
+- **Interactive Map** with key California conservation datasets:
   - Vulnerable Carbon Storage - raster COG
-  - Ramsar Wetlands of International Importance - PMTiles polygons
-  - World Database on Protected Areas (WDPA) - PMTiles polygons
-  - HydroBASINS Level 6 Watersheds - PMTiles polygons
+  - Species Richness (biodiversity) - raster COG
+  - Protected Areas (WDPA/CPAD) - PMTiles polygons
 
 - **AI Chatbot** powered by LLM + Model Context Protocol (MCP):
-  - Natural language queries about wetlands data
+  - Natural language queries about biodiversity data
   - Statistical analysis using DuckDB on GeoParquet files
   - Dynamic map layer control
+  - "Add Layer", "Filter Layer", and "Style Layer" capabilities
 
-- **Chatbot-Controlled Map Layers** - The chatbot can show/hide map layers based on analysis context
+- **Chatbot-Controlled Map Layers** - The chatbot can show, hide, filter, and style map layers based on conversation context.
 
 ## Deployment
 
@@ -27,35 +25,35 @@ The application expects a `config.json` file to be present at runtime. In the Ku
 
 ## Local Development
 
-For local development, you must manually create a `config.json` file in this directory based on `../k8s/configmap-nginx.yaml`. Note that the repository does not include a default `config.json`.
-
-
-```
+The application is optimized for Kubernetes deployment. For local development, you can serve the `app` directory with a static file server, but you must manually create a `config.json` file (see `k8s/configmap-nginx.yaml` for structure) and ensure you have access to the necessary MCP servers and LLM endpoints.
 
 ## Example Chatbot Queries
 
-- "How many different types of wetlands are there?"
-- "What's the total area of peatlands globally?"
-- "Which countries have the most wetlands?"
-- "Compare protected vs unprotected wetlands"
-- "Show me statistics about Ramsar sites"
+- "Show me protected areas in California"
+- "Filter protected areas to show only those with IUCN Category Ia"
+- "Color the protected areas by ownership type"
+- "Show me places with high species richness for birds"
+- "What is the total carbon storage in protected areas?"
 
 **Layer Control:**
-
-Users can show/hide layers using the checkboxes in the UI. All map layers are controlled manually by the user through the interactive controls.
+The chatbot can programmatically control the map using tools:
+- `add_layer`: Show a layer
+- `remove_layer`: Hide a layer
+- `filter_layer`: Apply filters (e.g. specific species groups or vector attributes)
+- `style_layer`: Change visual styling (e.g. colors)
 
 ## File Structure
 
 ```
-maplibre/
+app/
 ├── index.html              # Main HTML page
-├── map.js                  # MapLibre map setup and layer control
+├── map.js                  # MapLibre map setup and MapController
 ├── chat.js                 # Chatbot UI and MCP integration
-├── chat.css                # Chatbot styling
+├── mcp-tools.js            # Generic MCP tool generation
+├── layer-registry.js       # Layer metadata management
+├── layers-config.json      # Layer configuration
 ├── style.css               # Map styling
-├── config.json             # LLM configuration
-├── wetland-colormap.json   # GLWD wetland type colors
-├── category_codes.csv      # Wetland type descriptions
+├── chat.css                # Chatbot styling
 └── system-prompt.md        # Chatbot system prompt
 ```
 
@@ -63,12 +61,9 @@ maplibre/
 
 All data is served from MinIO S3-compatible storage:
 
-- **GLWD v2.0**: Global Lakes and Wetlands Database
-- **NCP**: Nature's Contributions to People (biodiversity importance)
-- **Carbon**: Irrecoverable Carbon (Conservation International 2018)
-- **Ramsar**: Ramsar Sites Information Service
-- **WDPA**: World Database on Protected Areas
-- **HydroBASINS**: Level 6 watershed boundaries
+- **Carbon**: Vulnerable Carbon Storage (raster COG)
+- **Species Richness**: Biodiversity richness layers (raster COG)
+- **WDPA**: World Database on Protected Areas (vector PMTiles)
 
 Data is stored as:
 - **COG** (Cloud-Optimized GeoTIFF) for raster layers
@@ -79,7 +74,7 @@ Data is stored as:
 
 Any OpenAI-compatible API:
 - **OpenAI**: `https://api.openai.com/v1/chat/completions`
-- **Local models** (e.g., Ollama with litellm): `http://localhost:4000/v1/chat/completions`
+- **Nautilus LLM Proxy**: `https://llm-proxy.nrp-nautilus.io/v1`
 
 
 ## Development
