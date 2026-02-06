@@ -1,0 +1,54 @@
+# R
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+*.Rproj
+
+# Python
+.ipynb_checkpoints
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Data files - exclude all large data files
+*.duckdb
+*.wal
+*.vrt
+*.parquet
+*.geojson
+*.gpkg
+*.pmtiles
+*.zip
+*.shp
+*.shx
+*.dbf
+*.prj
+*.sbn
+*.sbx
+*.shp.xml
+*.cpg
+*.qix
+
+# Ignore entire data directory except scripts and docs
+data/**/*
+!data/**/*.sh
+!data/**/*.md
+!data/**/*.py
+
+# Editor config
+.vscode/
+.idea/
+
+# Secrets and local config
+.env
+config.local.json
+secrets.yaml
+
+# Local runtime files
+*.log
+*.pid
+*.block
+*.tmp
+duck.db
+.streamlit
