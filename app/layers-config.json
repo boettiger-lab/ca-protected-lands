@@ -2,6 +2,233 @@
     "version": "1.0",
     "description": "Map layer configuration for California Protected Lands application",
     "layers": {
+        "carbon": {
+            "displayName": "Vulnerable Carbon",
+            "layerIds": [
+                "carbon-layer"
+            ],
+            "checkboxId": "carbon-layer",
+            "hasLegend": false,
+            "isVector": false,
+            "source": {
+                "type": "raster",
+                "tiles": [
+                    "https://titiler.nrp-nautilus.io/cog/tiles/WebMercatorQuad/{z}/{x}/{y}.png?url=https://s3-west.nrp-nautilus.io/public-carbon/cogs/vulnerable_c_total_2018.tif&colormap_name=reds"
+                ],
+                "tileSize": 256,
+                "minzoom": 0,
+                "maxzoom": 12,
+                "attribution": "<a href=\"https://www.conservation.org/irrecoverable-carbon\" target=\"_blank\">Irrecoverable Carbon (CI 2018)</a>"
+            },
+            "layer": {
+                "type": "raster",
+                "paint": {
+                    "raster-opacity": 0.7
+                },
+                "layout": {
+                    "visibility": "none"
+                }
+            }
+        },
+        "species_richness": {
+            "displayName": "🦜 Species Richness",
+            "layerIds": [
+                "species-richness-layer"
+            ],
+            "checkboxId": "species-richness-layer",
+            "hasLegend": false,
+            "isVector": false,
+            "source": {
+                "type": "raster",
+                "tiles": [
+                    "https://titiler.xyz/cog/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=https://s3-west.nrp-nautilus.io/public-iucn/cog/richness/Combined_SR_2025.tif&rescale=0,800&colormap_name=turbo"
+                ],
+                "tileSize": 256,
+                "minzoom": 0,
+                "maxzoom": 12,
+                "attribution": "<a href=\"https://www.iucnredlist.org/\" target=\"_blank\">IUCN Red List 2025</a>"
+            },
+            "layer": {
+                "type": "raster",
+                "paint": {
+                    "raster-opacity": 0.7
+                },
+                "layout": {
+                    "visibility": "none"
+                }
+            },
+            "params": {
+                "species_type": {
+                    "type": "radio",
+                    "label": "Species Type:",
+                    "options": [
+                        {
+                            "value": "all",
+                            "label": "All Species",
+                            "default": true
+                        },
+                        {
+                            "value": "threatened",
+                            "label": "Threatened"
+                        }
+                    ]
+                },
+                "taxon": {
+                    "type": "select",
+                    "label": "Taxonomic Group:",
+                    "options": [
+                        {
+                            "value": "combined",
+                            "label": "🌍 All Groups",
+                            "default": true
+                        },
+                        {
+                            "value": "amphibians",
+                            "label": "🐸 Amphibians"
+                        },
+                        {
+                            "value": "birds",
+                            "label": "🦜 Birds"
+                        },
+                        {
+                            "value": "mammals",
+                            "label": "🦁 Mammals"
+                        },
+                        {
+                            "value": "reptiles",
+                            "label": "🦎 Reptiles"
+                        },
+                        {
+                            "value": "fw_fish",
+                            "label": "🐟 Freshwater Fish"
+                        }
+                    ]
+                }
+            }
+        },
+        "wdpa": {
+            "displayName": "Protected Areas (WDPA)",
+            "layerIds": [
+                "wdpa-layer"
+            ],
+            "checkboxId": "wdpa-layer",
+            "hasLegend": false,
+            "isVector": true,
+            "source": {
+                "type": "vector",
+                "url": "pmtiles://https://s3-west.nrp-nautilus.io/public-wdpa/WDPA_Dec2025.pmtiles",
+                "attribution": "<a href=\"https://www.protectedplanet.net/\" target=\"_blank\">World Database on Protected Areas</a>"
+            },
+            "layer": {
+                "type": "fill",
+                "source-layer": "wdpa",
+                "minzoom": 0,
+                "maxzoom": 22,
+                "paint": {
+                    "fill-color": "#2E7D32",
+                    "fill-opacity": 0.5
+                },
+                "layout": {
+                    "visibility": "none"
+                }
+            },
+            "popup": {
+                "title": "{NAME_ENG} || {NAME} || Protected Area",
+                "fields": [
+                    {
+                        "label": "Type",
+                        "property": "DESIG_ENG"
+                    },
+                    {
+                        "label": "IUCN Category",
+                        "property": "IUCN_CAT"
+                    },
+                    {
+                        "label": "Ownership",
+                        "property": "OWN_TYPE"
+                    },
+                    {
+                        "label": "Area",
+                        "property": "GIS_AREA",
+                        "suffix": " km²"
+                    },
+                    {
+                        "label": "Year",
+                        "property": "STATUS_YR"
+                    }
+                ]
+            },
+            "filterableProperties": {
+                "NAME_ENG": {
+                    "type": "string",
+                    "description": "Site name in English"
+                },
+                "NAME": {
+                    "type": "string",
+                    "description": "Site name (original)"
+                },
+                "DESIG_ENG": {
+                    "type": "string",
+                    "description": "Designation type in English"
+                },
+                "DESIG_TYPE": {
+                    "type": "string",
+                    "description": "Designation type category"
+                },
+                "IUCN_CAT": {
+                    "type": "string",
+                    "description": "IUCN management category",
+                    "values": [
+                        "Ia",
+                        "Ib",
+                        "II",
+                        "III",
+                        "IV",
+                        "V",
+                        "VI",
+                        "Not Reported",
+                        "Not Applicable",
+                        "Not Assigned"
+                    ]
+                },
+                "ISO3": {
+                    "type": "string",
+                    "description": "ISO 3-letter country code"
+                },
+                "STATUS": {
+                    "type": "string",
+                    "description": "Current status (e.g., Designated, Proposed)"
+                },
+                "STATUS_YR": {
+                    "type": "number",
+                    "description": "Year of status"
+                },
+                "GOV_TYPE": {
+                    "type": "string",
+                    "description": "Governance type"
+                },
+                "OWN_TYPE": {
+                    "type": "string",
+                    "description": "Ownership type"
+                },
+                "GIS_AREA": {
+                    "type": "number",
+                    "description": "GIS-calculated area in km²"
+                },
+                "REP_AREA": {
+                    "type": "number",
+                    "description": "Reported area in km²"
+                },
+                "MARINE": {
+                    "type": "string",
+                    "description": "Marine designation (0, 1, 2)"
+                },
+                "NO_TAKE": {
+                    "type": "string",
+                    "description": "No-take zone status"
+                }
+            }
+        },
         "cpad": {
             "displayName": "California Protected Areas (CPAD)",
             "layerIds": [
