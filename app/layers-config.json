@@ -2,6 +2,199 @@
     "version": "1.0",
     "description": "Map layer configuration for California Protected Lands application",
     "layers": {
+        "cpad": {
+            "displayName": "California Protected Areas (CPAD)",
+            "layerIds": [
+                "cpad-layer"
+            ],
+            "checkboxId": "cpad-layer",
+            "hasLegend": false,
+            "isVector": true,
+            "source": {
+                "type": "vector",
+                "url": "pmtiles://https://s3-west.nrp-nautilus.io/public-cpad/cpad-2025b-units.pmtiles",
+                "attribution": "<a href=\"https://www.calands.org\" target=\"_blank\">GreenInfo Network</a>"
+            },
+            "layer": {
+                "type": "fill",
+                "source-layer": "cpad",
+                "minzoom": 0,
+                "maxzoom": 22,
+                "paint": {
+                    "fill-color": "#2E7D32",
+                    "fill-opacity": 0.5
+                },
+                "layout": {
+                    "visibility": "none"
+                }
+            },
+            "filterableProperties": {
+                "HOLDING_ID": {
+                    "type": "string",
+                    "description": "Unique identifier for each parcel (CPAD Holdings only)"
+                },
+                "UNIT_ID": {
+                    "type": "string",
+                    "description": "ID linking holding to parent unit"
+                },
+                "SUID_NMA": {
+                    "type": "string",
+                    "description": "Super unit ID for cross-county aggregation"
+                },
+                "UNIT_NAME": {
+                    "type": "string",
+                    "description": "Name of the park or protected area unit"
+                },
+                "PARK_NAME": {
+                    "type": "string",
+                    "description": "Name of the park (Super Units only)"
+                },
+                "AGNCY_NAME": {
+                    "type": "string",
+                    "description": "Full name of the owning agency"
+                },
+                "AGNCY_LEV": {
+                    "type": "string",
+                    "description": "Jurisdiction level: City, County, Special District, Joint, State, Federal, Non Profit, Private"
+                },
+                "AGNCY_TYP": {
+                    "type": "string",
+                    "description": "Detailed agency type (e.g., State Agency, Non Profit - Land Trust, Recreation/Parks District)"
+                },
+                "MNG_AGNCY": {
+                    "type": "string",
+                    "description": "Managing agency if different from owner"
+                },
+                "MNG_AGENCY": {
+                    "type": "string",
+                    "description": "Managing agency name (Super Units)"
+                },
+                "MNG_AG_LEV": {
+                    "type": "string",
+                    "description": "Managing agency jurisdiction level (Super Units)"
+                },
+                "MNG_AG_TYP": {
+                    "type": "string",
+                    "description": "Detailed managing agency type (Super Units)"
+                },
+                "ACCESS_TYP": {
+                    "type": "string",
+                    "description": "Public access level: Open Access, Restricted, No Public Access"
+                },
+                "LAND_WATER": {
+                    "type": "string",
+                    "description": "Whether holding is land or water (Holdings only)"
+                },
+                "COUNTY": {
+                    "type": "string",
+                    "description": "County containing the holding"
+                },
+                "CITY": {
+                    "type": "string",
+                    "description": "City containing the holding (if applicable)"
+                },
+                "ACRES": {
+                    "type": "number",
+                    "description": "Acreage calculated by GIS"
+                },
+                "SPEC_USE": {
+                    "type": "string",
+                    "description": "Special uses: Cemetery, Golf Course, School JUA, Trail Corridor, Wildlife Sanctuary, etc. (Holdings only)"
+                },
+                "YR_PROTECT": {
+                    "type": "number",
+                    "description": "Year parcel was acquired (Holdings only)"
+                },
+                "YR_EST": {
+                    "type": "number",
+                    "description": "Year the park/unit was established"
+                },
+                "GAP1_acres": {
+                    "type": "number",
+                    "description": "Acres managed for biodiversity where disturbance events proceed or are mimicked"
+                },
+                "GAP2_acres": {
+                    "type": "number",
+                    "description": "Acres managed for biodiversity where disturbance events are suppressed"
+                },
+                "GAP3_acres": {
+                    "type": "number",
+                    "description": "Acres managed for multiple uses including extraction (mining, logging) or OHV use"
+                },
+                "GAP4_acres": {
+                    "type": "number",
+                    "description": "Acres with no known mandate for protection"
+                },
+                "GAP_tot_ac": {
+                    "type": "number",
+                    "description": "Sum of all GAP acres"
+                },
+                "GAP_Source": {
+                    "type": "string",
+                    "description": "Source of GAP data: USGS PAD-US, CDPR, or managing agency"
+                },
+                "e_hold_id": {
+                    "type": "string",
+                    "description": "Unique easement record ID (CCED only)"
+                },
+                "sitename": {
+                    "type": "string",
+                    "description": "Site name as reported by agency (CCED only)"
+                },
+                "ease_label": {
+                    "type": "string",
+                    "description": "Generic label 'Conservation Easement' for mapping (CCED only)"
+                },
+                "esmthldr": {
+                    "type": "string",
+                    "description": "Primary easement holder agency name (CCED only)"
+                },
+                "eholdtyp": {
+                    "type": "string",
+                    "description": "Holder type: federal, state, local, NGO, other (CCED only)"
+                },
+                "s_emthd1": {
+                    "type": "string",
+                    "description": "Any additional easement holders (CCED only)"
+                },
+                "e_type": {
+                    "type": "string",
+                    "description": "Main purpose of easement (CCED only, under development)"
+                },
+                "pubaccess": {
+                    "type": "string",
+                    "description": "Access status: closed, restricted, or open - almost all are closed (CCED only)"
+                },
+                "duration": {
+                    "type": "string",
+                    "description": "Permanent or term-limited if 10+ years (CCED only)"
+                },
+                "term": {
+                    "type": "number",
+                    "description": "Numeric term length if applicable (CCED only)"
+                },
+                "date_est": {
+                    "type": "string",
+                    "description": "Full date established MM/DD/YYYY (CCED only)"
+                },
+                "year_est": {
+                    "type": "number",
+                    "description": "Year established YYYY (CCED only)"
+                },
+                "gis_acres": {
+                    "type": "number",
+                    "description": "Acres calculated by GIS (CCED only)"
+                },
+                "TOT_GAP_AC": {
+                    "type": "number",
+                    "description": "Sum of GAP acres (CCED only)"
+                },
+                "iucncat": {
+                    "type": "string",
+                    "description": "IUCN management category: Ia, Ib, II, III, IV, V, VI, N/A (CCED only)"
+                }
+            }
+        },
         "carbon": {
             "displayName": "Vulnerable Carbon",
             "layerIds": [
@@ -13,12 +206,12 @@
             "source": {
                 "type": "raster",
                 "tiles": [
-                    "https://titiler.nrp-nautilus.io/cog/tiles/WebMercatorQuad/{z}/{x}/{y}.png?url=https://s3-west.nrp-nautilus.io/public-carbon/cogs/vulnerable_c_total_2018.tif&colormap_name=reds"
+                    "https://titiler.nrp-nautilus.io/cog/tiles/WebMercatorQuad/{z}/{x}/{y}.png?url=https://s3-west.nrp-nautilus.io/public-carbon/cogs/vulnerable_c_total_2018.tif&colormap_name=reds&rescale=0,100"
                 ],
                 "tileSize": 256,
                 "minzoom": 0,
                 "maxzoom": 12,
-                "attribution": "<a href=\"https://www.conservation.org/irrecoverable-carbon\" target=\"_blank\">Irrecoverable Carbon (CI 2018)</a>"
+                "attribution": "<a href=\"https://www.conservation.org/irrecoverable-carbon\" target=\"_blank\">Conservation International</a>"
             },
             "layer": {
                 "type": "raster",
@@ -27,245 +220,6 @@
                 },
                 "layout": {
                     "visibility": "none"
-                }
-            }
-        },
-        "species_richness": {
-            "displayName": "🦜 Species Richness",
-            "layerIds": [
-                "species-richness-layer"
-            ],
-            "checkboxId": "species-richness-layer",
-            "hasLegend": false,
-            "isVector": false,
-            "source": {
-                "type": "raster",
-                "tiles": [
-                    "https://titiler.xyz/cog/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=https://s3-west.nrp-nautilus.io/public-iucn/cog/richness/Combined_SR_2025.tif&rescale=0,800&colormap_name=turbo"
-                ],
-                "tileSize": 256,
-                "minzoom": 0,
-                "maxzoom": 12,
-                "attribution": "<a href=\"https://www.iucnredlist.org/\" target=\"_blank\">IUCN Red List 2025</a>"
-            },
-            "layer": {
-                "type": "raster",
-                "paint": {
-                    "raster-opacity": 0.7
-                },
-                "layout": {
-                    "visibility": "none"
-                }
-            },
-            "params": {
-                "species_type": {
-                    "type": "radio",
-                    "label": "Species Type:",
-                    "options": [
-                        {
-                            "value": "all",
-                            "label": "All Species",
-                            "default": true
-                        },
-                        {
-                            "value": "threatened",
-                            "label": "Threatened"
-                        }
-                    ]
-                },
-                "taxon": {
-                    "type": "select",
-                    "label": "Taxonomic Group:",
-                    "options": [
-                        {
-                            "value": "combined",
-                            "label": "🌍 All Groups",
-                            "default": true
-                        },
-                        {
-                            "value": "amphibians",
-                            "label": "🐸 Amphibians"
-                        },
-                        {
-                            "value": "birds",
-                            "label": "🦜 Birds"
-                        },
-                        {
-                            "value": "mammals",
-                            "label": "🦁 Mammals"
-                        },
-                        {
-                            "value": "reptiles",
-                            "label": "🦎 Reptiles"
-                        },
-                        {
-                            "value": "fw_fish",
-                            "label": "🐟 Freshwater Fish"
-                        }
-                    ]
-                }
-            }
-        },
-        "wdpa": {
-            "displayName": "Protected Areas (WDPA)",
-            "layerIds": [
-                "wdpa-layer"
-            ],
-            "checkboxId": "wdpa-layer",
-            "hasLegend": false,
-            "isVector": true,
-            "source": {
-                "type": "vector",
-                "url": "pmtiles://https://s3-west.nrp-nautilus.io/public-wdpa/WDPA_Dec2025.pmtiles",
-                "attribution": "<a href=\"https://www.protectedplanet.net/\" target=\"_blank\">World Database on Protected Areas</a>"
-            },
-            "layer": {
-                "type": "fill",
-                "source-layer": "wdpa",
-                "minzoom": 0,
-                "maxzoom": 22,
-                "paint": {
-                    "fill-color": "#2E7D32",
-                    "fill-opacity": 0.5
-                },
-                "layout": {
-                    "visibility": "none"
-                }
-            },
-            "popup": {
-                "title": "{NAME_ENG} || {NAME} || Protected Area",
-                "fields": [
-                    {
-                        "label": "Type",
-                        "property": "DESIG_ENG"
-                    },
-                    {
-                        "label": "IUCN Category",
-                        "property": "IUCN_CAT"
-                    },
-                    {
-                        "label": "Ownership",
-                        "property": "OWN_TYPE"
-                    },
-                    {
-                        "label": "Area",
-                        "property": "GIS_AREA",
-                        "suffix": " km²"
-                    },
-                    {
-                        "label": "Year",
-                        "property": "STATUS_YR"
-                    }
-                ]
-            },
-            "filterableProperties": {
-                "NAME_ENG": {
-                    "type": "string",
-                    "description": "Site name in English"
-                },
-                "NAME": {
-                    "type": "string",
-                    "description": "Site name (original)"
-                },
-                "DESIG_ENG": {
-                    "type": "string",
-                    "description": "Designation type in English"
-                },
-                "DESIG_TYPE": {
-                    "type": "string",
-                    "description": "Designation type category"
-                },
-                "IUCN_CAT": {
-                    "type": "string",
-                    "description": "IUCN management category",
-                    "values": [
-                        "Ia",
-                        "Ib",
-                        "II",
-                        "III",
-                        "IV",
-                        "V",
-                        "VI",
-                        "Not Reported",
-                        "Not Applicable",
-                        "Not Assigned"
-                    ]
-                },
-                "ISO3": {
-                    "type": "string",
-                    "description": "ISO 3-letter country code"
-                },
-                "STATUS": {
-                    "type": "string",
-                    "description": "Current status (e.g., Designated, Proposed)"
-                },
-                "STATUS_YR": {
-                    "type": "number",
-                    "description": "Year of status"
-                },
-                "GOV_TYPE": {
-                    "type": "string",
-                    "description": "Governance type"
-                },
-                "OWN_TYPE": {
-                    "type": "string",
-                    "description": "Ownership type"
-                },
-                "GIS_AREA": {
-                    "type": "number",
-                    "description": "GIS-calculated area in km²"
-                },
-                "REP_AREA": {
-                    "type": "number",
-                    "description": "Reported area in km²"
-                },
-                "MARINE": {
-                    "type": "string",
-                    "description": "Marine designation (0, 1, 2)"
-                },
-                "NO_TAKE": {
-                    "type": "string",
-                    "description": "No-take zone status"
-                }
-            }
-        },
-        "cpad": {
-            "displayName": "California Protected Areas (CPAD)",
-            "layerIds": [
-                "cpad-units-fill",
-                "cpad-units-outline"
-            ],
-            "checkboxId": "cpad-units",
-            "hasLegend": true,
-            "isVector": true,
-            "sourceLayer": "cpad-2025b-units",
-            "sourceUrl": "pmtiles://https://s3-west.nrp-nautilus.io/public-cpad/cpad-2025b-units.pmtiles",
-            "dataTablePath": "s3://public-cpad/hex/cpad-2025b-units/**",
-            "description": "California Protected Areas Database (CPAD) showing protected area boundaries for 2025b.",
-            "filterableProperties": {
-                "UNIT_NAME": {
-                    "type": "string",
-                    "description": "Name of the protected area unit"
-                },
-                "AGNCY_NAME": {
-                    "type": "string",
-                    "description": "Name of the agency owning the land"
-                },
-                "MNG_AGNCY": {
-                    "type": "string",
-                    "description": "Name of the agency managing the land"
-                },
-                "ACCESS_TYP": {
-                    "type": "string",
-                    "description": "Type of public access allowed"
-                },
-                "ACRES": {
-                    "type": "number",
-                    "description": "Area in acres"
-                },
-                "COUNTY": {
-                    "type": "string",
-                    "description": "County where the unit is located"
                 }
             }
         }
