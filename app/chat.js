@@ -548,10 +548,19 @@ class BiodiversityChatbot {
 
         let content = '';
 
-        results.forEach((result, index) => {
+        results.forEach((item, index) => {
+            // Handle both string (legacy/fallback) and object format
+            const result = typeof item === 'object' ? item.content : item;
+            const toolName = typeof item === 'object' ? item.name : 'Unknown Tool';
+
+            // Skip showing results for 'query' tool (SQL results) as requested
+            if (toolName === 'query' || toolName === 'sql_query') {
+                return;
+            }
+
             content += `
                 <details>
-                    <summary class="query-summary-btn" style="cursor: pointer; user-select: none;">query result</summary>
+                    <summary class="query-summary-btn" style="cursor: pointer; user-select: none;">Tool Result: ${toolName}</summary>
                     <pre style="margin-top: 8px; background: rgba(0,0,0,0.05); padding: 8px; border-radius: 4px; overflow-x: auto; max-height: 300px;"><code>${this.escapeHtml(result.substring(0, 5000))}${result.length > 5000 ? '\n... (truncated)' : ''}</code></pre>
                 </details>
             `;
@@ -1016,11 +1025,11 @@ class BiodiversityChatbot {
                         try {
                             toolResult = this.executeLocalTool(toolName, functionArgs);
                             console.log(`[Local Tool] ✅ ${toolName} completed`);
-                            toolResults.push(toolResult);
+                            toolResults.push({ name: toolName, content: toolResult });
                         } catch (err) {
                             console.error('[Local Tool] Execution error:', err);
                             toolResult = JSON.stringify({ success: false, error: err.message });
-                            toolResults.push(toolResult);
+                            toolResults.push({ name: toolName, content: toolResult });
                         }
 
                         // Add tool result to messages
@@ -1048,7 +1057,7 @@ class BiodiversityChatbot {
                                 tool_call_id: toolCall.id,
                                 content: errorMsg
                             });
-                            toolResults.push(errorMsg);
+                            toolResults.push({ name: toolName, content: errorMsg });
                             continue;
                         }
 
@@ -1058,11 +1067,11 @@ class BiodiversityChatbot {
                         try {
                             queryResult = await this.executeMCPQuery(sqlQuery);
                             console.log(`[SQL] ✅ Query ${this.currentTurnQueries.length} completed`);
-                            toolResults.push(queryResult);
+                            toolResults.push({ name: toolName, content: queryResult });
                         } catch (err) {
                             console.error('[MCP] Execution error:', err);
                             queryResult = `Error executing query: ${err.message}`;
-                            toolResults.push(queryResult);
+                            toolResults.push({ name: toolName, content: queryResult });
                         }
 
                         // Add tool result to messages
@@ -1142,30 +1151,30 @@ class BiodiversityChatbot {
                             try {
                                 const result = this.executeLocalTool(toolName, functionArgs);
                                 console.log(`[Embedded Tool] ✅ ${toolName} completed`);
-                                toolResults.push(result);
+                                toolResults.push({ name: toolName, content: result });
                             } catch (err) {
                                 console.error('[Embedded Tool] Execution error:', err);
-                                toolResults.push(JSON.stringify({ success: false, error: err.message }));
+                                toolResults.push({ name: toolName, content: JSON.stringify({ success: false, error: err.message }) });
                             }
                         } else {
                             // MCP tool call
                             try {
                                 const result = await this.executeMCPToolCall(toolName, functionArgs);
-                                toolResults.push(result);
+                                toolResults.push({ name: toolName, content: result });
                             } catch (err) {
                                 console.error('[Embedded Tool] MCP execution error:', err);
-                                toolResults.push(JSON.stringify({ success: false, error: err.message }));
+                                toolResults.push({ name: toolName, content: JSON.stringify({ success: false, error: err.message }) });
                             }
                         }
 
                         // Add tool result to messages
+                        const lastResult = toolResults[toolResults.length - 1];
                         currentTurnMessages.push({
                             role: 'tool',
                             tool_call_id: toolCall.id,
-                            content: typeof toolResults[toolResults.length - 1] === 'string'
-                                ? toolResults[toolResults.length - 1]
-                                : JSON.stringify(toolResults[toolResults.length - 1])
+                            content: typeof lastResult === 'object' && lastResult.content ? lastResult.content : lastResult
                         });
+
                     }
 
                     // Show results and continue the loop
