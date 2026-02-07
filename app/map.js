@@ -565,6 +565,16 @@ map.on('load', async function () {
         // Using fetch to bypass module caching issues during development
         await layerRegistry.loadFromJson('layers-config.json');
 
+        // Apply initial view if configured
+        const initialView = layerRegistry.getView();
+        if (initialView) {
+            console.log('Setting initial map view:', initialView);
+            map.jumpTo({
+                center: initialView.center,
+                zoom: initialView.zoom
+            });
+        }
+
         // 2. Initialize layers on the map
         for (const [key, config] of layerRegistry.layers) {
 

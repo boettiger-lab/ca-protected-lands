@@ -72,7 +72,8 @@ def generate_layer_config(
     display_name: Optional[str] = None,
     titiler_url: str = "https://titiler.nrp-nautilus.io",
     colormap: str = "reds",
-    rescale: Optional[str] = None
+    rescale: Optional[str] = None,
+    source_layer: Optional[str] = None
 ) -> Dict[str, Any]:
     """Generate a layer configuration from a STAC collection and asset."""
     
@@ -100,8 +101,8 @@ def generate_layer_config(
     # Build layer config based on type
     if layer_type == "pmtiles":
         # Vector layer (PMTiles)
-        # Extract source-layer name - use layer_key as default
-        source_layer_name = layer_key
+        # Extract source-layer name - use provided option or layer_key as default
+        source_layer_name = source_layer or layer_key
         
         layer_config = {
             "displayName": final_display_name,
@@ -244,6 +245,13 @@ def main():
         "layers": {}
     }
     
+    # Add optional initial view configuration
+    if "view" in input_config:
+        print(f"Found view config: {input_config['view']}", file=sys.stderr)
+        layers_config["view"] = input_config["view"]
+    else:
+        print("No view config found in input", file=sys.stderr)
+    
     for spec in layer_specs:
         collection_id = spec.get("collection_id")
         asset_id = spec.get("asset_id")
@@ -269,6 +277,7 @@ def main():
         # Get options with defaults
         colormap = options.get("colormap", default_colormap)
         rescale = options.get("rescale")
+        source_layer = options.get("source_layer")
         
         # Generate layer config
         layer_config = generate_layer_config(
@@ -278,7 +287,8 @@ def main():
             display_name,
             titiler_url,
             colormap,
-            rescale
+            rescale,
+            source_layer
         )
         
         layers_config["layers"][layer_key] = layer_config
@@ -287,6 +297,8 @@ def main():
     # Write output
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    print(f"\nFinal config keys: {list(layers_config.keys())}", file=sys.stderr)
     
     with open(output_path, "w") as f:
         json.dump(layers_config, f, indent=4)

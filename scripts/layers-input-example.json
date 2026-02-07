@@ -1,12 +1,22 @@
 {
     "catalog": "https://s3-west.nrp-nautilus.io/public-data/stac/catalog.json",
     "titiler_url": "https://titiler.nrp-nautilus.io",
+    "view": {
+        "center": [
+            -119.4179,
+            36.7783
+        ],
+        "zoom": 6
+    },
     "layers": [
         {
             "collection_id": "cpad-2025b",
             "asset_id": "cpad-units-pmtiles",
             "layer_key": "cpad",
             "display_name": "California Protected Areas (CPAD)",
+            "options": {
+                "source_layer": "cpad-2025b-units"
+            },
             "comment": "PMTiles vector layer - filterable properties will be auto-extracted from STAC"
         },
         {

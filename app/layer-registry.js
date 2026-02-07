@@ -17,6 +17,7 @@
 export class LayerRegistry {
     constructor() {
         this.layers = new Map();
+        this.config = {};
     }
 
     /**
@@ -61,9 +62,18 @@ export class LayerRegistry {
      * @param {Object} config - Configuration object with layer definitions
      */
     registerFromConfig(config) {
+        this.config = config; // Store full config
         for (const [key, metadata] of Object.entries(config.layers || {})) {
             this.register(key, metadata);
         }
+    }
+
+    /**
+     * Get the initial map view configuration
+     * @returns {Object|null} - View configuration { center: [lon, lat], zoom: number } or null
+     */
+    getView() {
+        return this.config.view || null;
     }
 
     /**
