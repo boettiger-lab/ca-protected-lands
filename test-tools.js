@@ -1,35 +1,44 @@
 #!/usr/bin/env node
 /**
- * Unit test for chat.js tool generation and execution
- * Tests that local map tools are properly registered and have correct descriptions
+ * Comprehensive test to validate tool formatting for LLM API
+ * Tests that local tools match the same format as MCP tools
  */
 
 import { layerRegistry } from './app/layer-registry.js';
 import { generateTools } from './app/mcp-tools.js';
 
+// === Mock the same structures chat.js uses ===
+
+// Mock MCP tool (simulating what comes from the MCP server)
+const mockMcpTools = [
+    {
+        name: 'query',
+        description: 'Execute a SQL query',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                sql_query: {
+                    type: 'string',
+                    description: 'SQL query to execute'
+                }
+            },
+            required: ['sql_query']
+        }
+    }
+];
+
 // Mock MapController
 const mockMapController = {
-    setLayerVisibility: (layerId, visible) => {
-        return JSON.stringify({ success: true, layerId, visible });
-    },
-    filterLayer: (layerId, filter) => {
-        return JSON.stringify({ success: true, layerId, filter });
-    },
-    styleLayer: (layerId, style) => {
-        return JSON.stringify({ success: true, layerId, style });
-    },
-    getLayerInfo: () => {
-        return JSON.stringify({
-            layers: ['cpad', 'carbon'],
-            visible: { cpad: false, carbon: false }
-        });
-    }
+    setLayerVisibility: (layerId, visible) => ({ success: true, layerId, visible }),
+    filterLayer: (layerId, filter) => ({ success: true, layerId, filter }),
+    styleLayer: (layerId, style) => ({ success: true, layerId, style }),
+    getAvailableLayers: () => ['carbon', 'cpad']
 };
 
-async function testToolGeneration() {
-    console.log('=== Testing Tool Generation ===\n');
+async function runTest() {
+    console.log('=== Tool Format Validation Test ===\n');
 
-    // Manually add test layers to registry
+    // 1. Set up layer registry (mimicking what config-loader does)
     layerRegistry.layers = new Map([
         ['carbon', {
             key: 'carbon',
@@ -43,120 +52,95 @@ async function testToolGeneration() {
             isVector: true,
             type: 'vector',
             filterableProperties: {
-                'GAP_Sts': { type: 'string', description: 'GAP Status code' },
-                'Mang_Type': { type: 'string', description: 'Manager Type' }
+                'GAP_Sts': { type: 'string', description: 'GAP Status code' }
             }
         }]
     ]);
 
-    console.log('✓ Registered layers:', Array.from(layerRegistry.layers.keys()).join(', '));
+    console.log('Layer registry:', Array.from(layerRegistry.layers.keys()).join(', '));
 
-    // Generate tools
-    const tools = generateTools(layerRegistry, mockMapController);
+    // 2. Generate local tools (what mcp-tools.js does)
+    const localTools = generateTools(layerRegistry, mockMapController);
+    console.log('Generated', localTools.length, 'local tools\n');
 
-    console.log(`\n✓ Generated ${tools.length} tools:\n`);
-
-    tools.forEach(tool => {
-        console.log(`  - ${tool.name}`);
-        console.log(`    Description: ${tool.description.substring(0, 150)}...`);
-        console.log(`    Parameters:`, Object.keys(tool.inputSchema.properties).join(', '));
-        console.log('');
-    });
-
-    return tools;
-}
-
-function testToolExecution(tools) {
-    console.log('\n=== Testing Tool Execution ===\n');
-
-    const testCases = [
-        {
-            name: 'add_layer',
-            args: { layer_id: 'carbon' },
-            expectedTool: 'add_layer'
-        },
-        {
-            name: 'remove_layer',
-            args: { layer_id: 'carbon' },
-            expectedTool: 'remove_layer'
-        },
-        {
-            name: 'filter_layer',
-            args: {
-                layer_id: 'cpad',
-                filter: ['==', 'GAP_Sts', '1']
-            },
-            expectedTool: 'filter_layer'
-        },
-        {
-            name: 'style_layer',
-            args: {
-                layer_id: 'cpad',
-                style: { 'fill-color': 'red' }
-            },
-            expectedTool: 'style_layer'
+    // 3. Format MCP tools (EXACTLY as chat.js does on line 754-770)
+    const mcpToolsFormatted = mockMcpTools.map(tool => ({
+        type: 'function',
+        function: {
+            name: tool.name,
+            description: tool.description,
+            parameters: tool.inputSchema || {
+                type: 'object',
+                properties: {
+                    query: {
+                        type: 'string',
+                        description: 'SQL query to execute'
+                    }
+                },
+                required: ['query']
+            }
         }
+    }));
+
+    // 4. Format local tools (EXACTLY as chat.js does on line 773-780)
+    const localToolsFormatted = localTools.map(tool => ({
+        type: 'function',
+        function: {
+            name: tool.name,
+            description: tool.description,
+            parameters: tool.inputSchema
+        }
+    }));
+
+    // 5. Compare the structures
+    console.log('=== MCP Tool Format (query - this works) ===');
+    console.log(JSON.stringify(mcpToolsFormatted[0], null, 2));
+
+    console.log('\n=== Local Tool Format (add_layer - this fails) ===');
+    const addLayerTool = localToolsFormatted.find(t => t.function.name === 'add_layer');
+    console.log(JSON.stringify(addLayerTool, null, 2));
+
+    // 6. Validate structure matches
+    console.log('\n=== Structure Validation ===');
+
+    const mcpTool = mcpToolsFormatted[0];
+    const localTool = addLayerTool;
+
+    const checks = [
+        ['Has type: "function"', mcpTool.type === 'function', localTool.type === 'function'],
+        ['Has function.name', typeof mcpTool.function.name === 'string', typeof localTool.function.name === 'string'],
+        ['Has function.description', typeof mcpTool.function.description === 'string', typeof localTool.function.description === 'string'],
+        ['Has function.parameters', typeof mcpTool.function.parameters === 'object', typeof localTool.function.parameters === 'object'],
+        ['parameters.type = "object"', mcpTool.function.parameters.type === 'object', localTool.function.parameters?.type === 'object'],
+        ['Has parameters.properties', typeof mcpTool.function.parameters.properties === 'object', typeof localTool.function.parameters?.properties === 'object'],
+        ['Has parameters.required', Array.isArray(mcpTool.function.parameters.required), Array.isArray(localTool.function.parameters?.required)]
     ];
 
-    testCases.forEach(test => {
-        const tool = tools.find(t => t.name === test.expectedTool);
-        if (!tool) {
-            console.log(`❌ Tool ${test.expectedTool} not found!`);
-            return;
-        }
-
-        try {
-            const result = tool.execute(test.args);
-            console.log(`✓ ${test.name}:`, result);
-        } catch (err) {
-            console.log(`❌ ${test.name} failed:`, err.message);
-        }
+    let allPass = true;
+    checks.forEach(([name, mcpPass, localPass]) => {
+        const status = mcpPass && localPass ? '✅' : '❌';
+        if (!localPass) allPass = false;
+        console.log(`${status} ${name}: MCP=${mcpPass}, Local=${localPass}`);
     });
-}
 
-function analyzeToolDescriptions(tools) {
-    console.log('\n=== Analyzing Tool Descriptions for LLM ===\n');
+    // 7. Full combined tools array (what actually gets sent to LLM)
+    const allTools = [...mcpToolsFormatted, ...localToolsFormatted];
+    console.log('\n=== Final Tools Array ===');
+    console.log(`Total tools: ${allTools.length}`);
+    console.log('Tool names:', allTools.map(t => t.function.name).join(', '));
 
-    const addLayerTool = tools.find(t => t.name === 'add_layer');
-    const getLayerInfoTool = tools.find(t => t.name === 'get_layer_info');
+    // 8. Print full payload for inspection
+    console.log('\n=== Full API Payload (tools array) ===');
+    console.log(JSON.stringify(allTools, null, 2));
 
-    console.log('add_layer description:');
-    console.log(addLayerTool.description);
-    console.log('\n---\n');
-
-    console.log('get_layer_info description:');
-    console.log(getLayerInfoTool.description);
-    console.log('\n---\n');
-
-    // Check if descriptions make it clear when to use each tool
-    const addLayerHasShowKeywords = /show|display|visualize|add/i.test(addLayerTool.description);
-    const getLayerInfoHasListKeywords = /list|available|what.*layers/i.test(getLayerInfoTool.description);
-
-    console.log('Analysis:');
-    console.log(`  add_layer mentions show/display: ${addLayerHasShowKeywords}`);
-    console.log(`  get_layer_info mentions list/available: ${getLayerInfoHasListKeywords}`);
-
-    if (!addLayerHasShowKeywords) {
-        console.log('\n⚠️  WARNING: add_layer description should mention "show" or "display"');
-    }
-
-    if (!getLayerInfoHasListKeywords) {
-        console.log('\n⚠️  WARNING: get_layer_info description should mention "list" or "available"');
+    if (allPass) {
+        console.log('\n✅ All validations passed - tool format looks correct');
+    } else {
+        console.log('\n❌ Some validations failed - check tool format');
     }
 }
 
-// Run tests
-async function main() {
-    try {
-        const tools = await testToolGeneration();
-        testToolExecution(tools);
-        analyzeToolDescriptions(tools);
-
-        console.log('\n=== Test Complete ===\n');
-    } catch (err) {
-        console.error('Test failed:', err);
-        process.exit(1);
-    }
-}
-
-main();
+runTest().catch(err => {
+    console.error('Test failed:', err);
+    process.exit(1);
+});

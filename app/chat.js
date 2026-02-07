@@ -109,6 +109,67 @@ class BiodiversityChatbot {
         return result;
     }
 
+    // Parse embedded tool calls from message content (fallback for models that don't use structured tool_calls)
+    // Supports formats:
+    //   <tool_call>tool_name</tool_call>  
+    //   <tool_call>tool_name({"arg": "value"})</tool_call>
+    //   <tool_call>{"name": "tool_name", "arguments": {...}}</tool_call>
+    parseEmbeddedToolCalls(content) {
+        if (!content) return [];
+
+        const toolCalls = [];
+
+        // Pattern 1: <tool_call>tool_name</tool_call> or <tool_call>tool_name(args)</tool_call>
+        const tagPattern = /<tool_call>([^<]+)<\/tool_call>/gi;
+        let match;
+
+        while ((match = tagPattern.exec(content)) !== null) {
+            const inner = match[1].trim();
+            console.log('[Parser] Found embedded tool call tag:', inner);
+
+            // Try to parse as JSON first
+            try {
+                const parsed = JSON.parse(inner);
+                if (parsed.name) {
+                    toolCalls.push({
+                        name: parsed.name,
+                        args: parsed.arguments || {}
+                    });
+                    continue;
+                }
+            } catch (e) {
+                // Not JSON, try other formats
+            }
+
+            // Try to parse as function call: tool_name(args) or tool_name({...})
+            const funcMatch = inner.match(/^(\w+)\s*\((.+)\)$/s);
+            if (funcMatch) {
+                const name = funcMatch[1];
+                try {
+                    const args = JSON.parse(funcMatch[2]);
+                    toolCalls.push({ name, args });
+                    continue;
+                } catch (e) {
+                    console.log('[Parser] Could not parse args as JSON:', funcMatch[2]);
+                }
+            }
+
+            // Simple tool name only (no args)
+            if (/^\w+$/.test(inner)) {
+                // Check if this is a known tool
+                const toolName = inner;
+                if (this.isLocalTool(toolName) || toolName === 'query') {
+                    toolCalls.push({ name: toolName, args: {} });
+                    continue;
+                }
+            }
+
+            console.log('[Parser] Could not parse embedded tool call:', inner);
+        }
+
+        return toolCalls;
+    }
+
     getCurrentModelConfig() {
         // Find the config for the currently selected model
         const modelConfig = this.config.llm_models?.find(m => m.value === this.selectedModel);
@@ -1039,7 +1100,82 @@ class BiodiversityChatbot {
 
                 // Loop continues to next iteration to send tool results back to LLM
             } else {
-                // No tool calls, this is the final response
+                // No tool calls, check for embedded tool calls in message content
+                // (Some models like GLM-4.7 sometimes embed tool calls as XML tags in text)
+                const embeddedToolCalls = this.parseEmbeddedToolCalls(message.content);
+
+                if (embeddedToolCalls.length > 0) {
+                    console.log('[LLM] Found embedded tool calls in message content:', embeddedToolCalls.map(t => t.name));
+
+                    // Execute the embedded tool calls
+                    toolCallCount++;
+                    this.clearThinking();
+
+                    // Create synthetic tool_calls array for the approval UI
+                    const syntheticToolCalls = embeddedToolCalls.map(tc => ({
+                        id: `embedded_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                        type: 'function',
+                        function: {
+                            name: tc.name,
+                            arguments: JSON.stringify(tc.args)
+                        }
+                    }));
+
+                    // Show tool call proposal and wait for approval
+                    const approval = await this.showToolCallProposal(syntheticToolCalls, toolCallCount, message.content);
+
+                    if (!approval.approved) {
+                        console.log('[User] Embedded tool call rejected by user');
+                        this.addMessage('system', 'Tool call cancelled.');
+                        return { response: null, sqlQueries: this.currentTurnQueries, cancelled: true };
+                    }
+
+                    // Execute the embedded tool calls
+                    const toolResults = [];
+                    for (const toolCall of syntheticToolCalls) {
+                        const toolName = toolCall.function.name;
+                        const functionArgs = JSON.parse(toolCall.function.arguments);
+
+                        console.log(`[Embedded Tool] Executing ${toolName}...`);
+
+                        if (this.isLocalTool(toolName)) {
+                            try {
+                                const result = this.executeLocalTool(toolName, functionArgs);
+                                console.log(`[Embedded Tool] ✅ ${toolName} completed`);
+                                toolResults.push(result);
+                            } catch (err) {
+                                console.error('[Embedded Tool] Execution error:', err);
+                                toolResults.push(JSON.stringify({ success: false, error: err.message }));
+                            }
+                        } else {
+                            // MCP tool call
+                            try {
+                                const result = await this.executeMCPToolCall(toolName, functionArgs);
+                                toolResults.push(result);
+                            } catch (err) {
+                                console.error('[Embedded Tool] MCP execution error:', err);
+                                toolResults.push(JSON.stringify({ success: false, error: err.message }));
+                            }
+                        }
+
+                        // Add tool result to messages
+                        currentTurnMessages.push({
+                            role: 'tool',
+                            tool_call_id: toolCall.id,
+                            content: typeof toolResults[toolResults.length - 1] === 'string'
+                                ? toolResults[toolResults.length - 1]
+                                : JSON.stringify(toolResults[toolResults.length - 1])
+                        });
+                    }
+
+                    // Show results and continue the loop
+                    this.showToolResults(toolResults, toolCallCount);
+                    this.showThinking();
+                    await this.askContinue(toolCallCount);
+                    continue;  // Continue the while loop
+                }
+
+                // No tool calls found, this is the final response
                 console.log('[LLM] Returning direct message content (no tool calls)');
                 const directContent = message.content;
 
