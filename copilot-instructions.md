@@ -31,3 +31,9 @@ Deployment is managed via Kubernetes. The application runs in a container that c
 ## Testing
 - Use a minimal `test.html` to verify layer rendering if issues arise.
 - Local development: `python -m http.server` in `app/` directory.
+
+## Kubernetes Deployment Notes
+- **Namespace**: Deployment runs in the `biodiversity` namespace (set in kubectl config)
+- **Important**: Do NOT specify `-n` flag when running kubectl commands
+- **Deployment name**: Check `kubectl get deployments` for the actual deployment name
+

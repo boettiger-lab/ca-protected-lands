@@ -44,8 +44,25 @@ class BiodiversityChatbot {
     // Load layer configuration and initialize tool factory
     async loadLayersAndInitTools() {
         try {
-            // Load layer configuration from JSON
-            await layerRegistry.loadFromJson('layers-config.json');
+            // Wait for layer registry to be populated
+            // (Layers are loaded by map.js via config-loader.js)
+            const waitForLayers = () => {
+                return new Promise((resolve) => {
+                    const checkInterval = setInterval(() => {
+                        if (layerRegistry.layers.size > 0) {
+                            clearInterval(checkInterval);
+                            resolve();
+                        }
+                    }, 100);
+                    // Timeout after 10 seconds
+                    setTimeout(() => {
+                        clearInterval(checkInterval);
+                        resolve();
+                    }, 10000);
+                });
+            };
+
+            await waitForLayers();
             console.log('✓ Layer registry loaded:', layerRegistry.getSummary());
 
             // Wait for MapController to be available (set up in map.js)

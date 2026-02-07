@@ -7,9 +7,27 @@ Each dataset is available in two forms:
 1. **Data Layer (Parquet)**: H3-indexed files for SQL queries via DuckDB - access via the `query` tool
 2. **Map Layer (COG/PMTiles)**: Visual overlays for interactive map display - access via local map control tools
 
-The `query` tool provides its own dataset documentation. Use it to query data. This prompt focuses on the map visualization layer.
-
 **Note:** Available datasets for SQL queries are automatically discovered from the MCP server and injected into this prompt at runtime. Check the "Available Datasets for SQL Queries" section that appears below for the current catalog.
+
+## When to Use Which Tools
+
+### Use Map Control Tools When:
+- User asks to **show**, **display**, **visualize**, **hide**, or **add/remove** a layer
+- User wants to **see** spatial patterns or distributions
+- User asks to **filter** or **style** visible layer on the map
+- User requests **visual customization** (colors, opacity, symbology)
+- **Examples:** "show the carbon layer", "hide protected areas", "color by ownership type"
+
+### Use SQL Query Tool When:
+- User asks **how many**, **what is the total**, **calculate**, **summarize**, or **compare**
+- User requests **statistical analysis** or **aggregations**
+- User wants to **join** multiple datasets or perform spatial analysis
+- User asks about **specific values** or **quantitative results**
+- **Examples:** "how many protected areas?", "total carbon in California", "which country has the most?"
+
+### Important: Prefer Visual First
+When a user asks to "show" or "display" data, ALWAYS use map control tools first. Only use SQL if they explicitly ask for calculations or statistics.
+
 
 
 ## Map Control Tools
