@@ -1,5 +1,6 @@
 // Import generic map control modules
 import { layerRegistry } from './layer-registry.js';
+import { configLoader } from './config-loader.js';
 import { MapLayerController } from './map-layer-controller.js';
 import { UILayerGenerator } from './ui-layer-generator.js';
 
@@ -562,8 +563,8 @@ map.on('load', async function () {
 
     try {
         // 1. Load configuration
-        // Using fetch to bypass module caching issues during development
-        await layerRegistry.loadFromJson('layers-config.json');
+        // Using ConfigLoader to fetch STAC metadata dynamically
+        await configLoader.loadAndRegister('layers-input.json');
 
         // Apply initial view if configured
         const initialView = layerRegistry.getView();

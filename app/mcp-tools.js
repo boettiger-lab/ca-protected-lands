@@ -12,6 +12,22 @@ export function generateTools(layerRegistry, mapController) {
     const allLayers = layerRegistry.getKeys();
     const vectorLayers = layerRegistry.getVectorKeys();
 
+    // Helper to generate property documentation
+    const getLayerPropsDoc = () => {
+        return vectorLayers.map(layerId => {
+            const props = layerRegistry.getFilterableProperties(layerId);
+            if (!props || Object.keys(props).length === 0) return '';
+
+            const propList = Object.entries(props)
+                .map(([key, details]) => `  - ${key} (${details.type}): ${details.description}`)
+                .join('\n');
+
+            return `\nAvailable properties for '${layerId}':\n${propList}`;
+        }).join('\n');
+    };
+
+    const layerPropsDoc = getLayerPropsDoc();
+
     return [
         {
             name: 'add_layer',
@@ -76,6 +92,8 @@ export function generateTools(layerRegistry, mapController) {
             - ["==", "property", "value"]
             - ["in", "property", "val1", "val2"]
             - [">", "property", 100]
+
+            ${layerPropsDoc}
             `,
             inputSchema: {
                 type: 'object',
@@ -108,6 +126,9 @@ export function generateTools(layerRegistry, mapController) {
             Values can be static or MapLibre expressions.
             
             Example: { "fill-color": "red", "fill-opacity": 0.5 }
+            
+            You can use data-driven styling with 'match', 'step', or 'interpolate' expressions using the layer properties.
+            ${layerPropsDoc}
             `,
             inputSchema: {
                 type: 'object',

@@ -9,14 +9,6 @@ Each dataset is available in two forms:
 
 The `query` tool provides its own dataset documentation. Use it to query data. This prompt focuses on the map visualization layer.
 
-## Map Layers Available
-
-**Raster Layers (COG)**: Continuous data visualized as colored pixels
-- `carbon` - Vulnerable carbon density (Conservation International 2018)
-- `species_richness` - IUCN species richness with dynamic filtering
-
-**Vector Layers (PMTiles)**: Discrete polygons with attributes (filterable, styleable)
-- `wdpa` - World Database on Protected Areas
 
 ## Map Control Tools
 
@@ -25,13 +17,13 @@ The `query` tool provides its own dataset documentation. Use it to query data. T
 **`add_layer`** - Add/show a layer on the map
 ```javascript
 // Parameters:
-layer_id: "carbon" | "species_richness" | "wdpa" | "cpad"
+layer_id: string // Use get_layer_info() to see available layer IDs
 ```
 
 **`remove_layer`** - Remove/hide a layer from the map
 ```javascript
 // Parameters:
-layer_id: "carbon" | "species_richness" | "wdpa" | "cpad"
+layer_id: string // Use get_layer_info() to see available layer IDs
 ```
 
 **`get_layer_info`** - Get available layers and their current visibility status
@@ -41,7 +33,7 @@ layer_id: "carbon" | "species_richness" | "wdpa" | "cpad"
 **`filter_layer`** - Apply a filter to a layer
 ```javascript
 // Parameters:
-layer_id: "wdpa" | "species_richness" | ...
+layer_id: string 
 filter: 
   // For species_richness (Object):
   {
@@ -50,12 +42,13 @@ filter:
   }
   // For vector layers (Array - MapLibre filter expression):
   ["==", "property", "value"]
+  // CHECK TOOL DEFINITION FOR AVAILABLE PROPERTIES
 ```
 
 **`style_layer`** - Update layer styling (paint properties)
 ```javascript
 // Parameters:
-layer_id: "wdpa"
+layer_id: string
 style: { 
   "fill-color": "red", 
   "fill-opacity": 0.5 

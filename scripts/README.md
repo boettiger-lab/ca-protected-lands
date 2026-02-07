@@ -1,102 +1,83 @@
-# STAC to Layers Config Generator
+# Layer Configuration
 
-This directory contains a helper script to generate `layers-config.json` from STAC catalog entries.
+This directory contains example configuration for the CA Protected Lands map application.
 
-## Quick Start
+## Runtime Configuration (Current Approach)
 
-**Recommended: Use a JSON input file** (clearer what you need to specify vs what comes from STAC):
+The application now generates layer configurations **dynamically at runtime** by fetching STAC catalog metadata directly in the browser.
 
-```bash
-python3 scripts/stac-to-layers-config.py \
-    --input scripts/layers-input-example.json \
-    --output app/layers-config.json
-```
+### Configuration File
 
-## Input JSON Format
-
-Create a JSON file specifying which layers to generate:
+Edit [`app/layers-input.json`](../app/layers-input.json) to specify which STAC collections and assets to load:
 
 ```json
 {
     "catalog": "https://s3-west.nrp-nautilus.io/public-data/stac/catalog.json",
     "titiler_url": "https://titiler.nrp-nautilus.io",
+    "view": {
+        "center": [-119.4179, 36.7783],
+        "zoom": 6
+    },
     "layers": [
         {
             "collection_id": "cpad-2025b",
             "asset_id": "cpad-units-pmtiles",
             "layer_key": "cpad",
             "display_name": "California Protected Areas (CPAD)",
-            "comment": "PMTiles vector - filterable properties auto-extracted from STAC"
-        },
-        {
-            "collection_id": "irrecoverable-carbon",
-            "asset_id": "vulnerable-total-2018-cog",
-            "layer_key": "carbon",
-            "display_name": "Vulnerable Carbon",
             "options": {
-                "colormap": "reds",
-                "rescale": "0,100"
-            },
-            "comment": "COG raster - served via TiTiler"
+                "source_layer": "cpad-2025b-units"
+            }
         }
     ]
 }
 ```
 
-### What You Specify vs What Comes from STAC
+### How It Works
 
-**User-specified (required):**
+1. On map load, [`app/config-loader.js`](../app/config-loader.js) fetches `layers-input.json`
+2. For each layer, it:
+   - Traverses the STAC catalog to find the collection
+   - Fetches collection metadata
+   - Extracts `table:columns` for vector layer properties
+   - Builds the full layer configuration
+   - Registers it with the layer registry
+3. The map initializes with the dynamically loaded layers
+
+### Benefits
+
+- **No build step required** - changes to `layers-input.json` take effect immediately
+- **Always up-to-date** - reflects current STAC metadata
+- **Simpler workflow** - no Python scripts to run
+
+## Configuration Reference
+
+### Required Fields
+
 - `collection_id`: STAC collection ID
 - `asset_id`: Asset ID from the collection
-- `layer_key`: Key to use in layers-config.json
+- `layer_key`: Unique key for the layer
 
-**User-specified (optional):**
-- `display_name`: Layer display name (falls back to STAC asset title)
+### Optional Fields
+
+- `display_name`: Layer display name (defaults to STAC asset title)
 - `options.colormap`: Colormap for raster layers (default: "reds")
 - `options.rescale`: Rescale range for rasters (e.g., "0,100")
+- `options.source_layer`: Source layer name for PMTiles
 
-**Auto-extracted from STAC:**
+### Auto-Extracted from STAC
+
 - Attribution (from collection providers/links)
 - Filterable properties (from `table:columns` for vector layers)
 - Asset URLs and types
 - Layer metadata
 
-## Arguments
+## Finding Collections and Assets
 
-- `--input`: Path to input JSON file (required)
-- `--output`: Path where layers-config.json should be written (required)
-
-## How It Works
-
-1. **Reads the STAC catalog** to find collection URLs
-2. **Fetches collection metadata** including assets, table columns, and attribution
-3. **Detects layer type**:
-   - PMTiles assets → vector layers with filterable properties
-   - COG (GeoTIFF) assets → raster layers via TiTiler
-4. **Extracts metadata**:
-   - Display names from asset titles
-   - Attribution from collection providers
-   - Filterable properties from `table:columns` (for vector layers)
-5. **Generates layer config** in the format expected by the application
-
-## Finding Asset IDs
-
-To find available collections and assets, browse the STAC catalog:
+Browse the STAC catalog:
 - **STAC Browser**: https://radiantearth.github.io/stac-browser/#/external/s3-west.nrp-nautilus.io/public-data/stac/catalog.json
 - **Catalog JSON**: https://s3-west.nrp-nautilus.io/public-data/stac/catalog.json
 
-Or use this command to list assets in a collection:
-```bash
-curl -s https://s3-west.nrp-nautilus.io/public-cpad/stac-collection.json | \
-    python -m json.tool | grep -A 5 '"assets"'
-```
+## Example Input File
 
-## Notes
+See [`layers-input-example.json`](layers-input-example.json) for a complete example configuration.
 
-- The script automatically detects vector vs raster layers based on asset type
-- For PMTiles layers, it extracts filterable properties from STAC `table:columns`
-- For COG layers, it generates TiTiler tile URLs with appropriate colormaps
-- Generated configs may need manual adjustment for:
-  - Layer source-layer names (PMTiles)
-  - Colormap settings (raster)
-  - Additional UI parameters (like species_richness filters)
