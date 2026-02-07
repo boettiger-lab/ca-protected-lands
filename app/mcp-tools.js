@@ -119,6 +119,26 @@ export function generateTools(layerRegistry, mapController) {
             }
         },
         {
+            name: 'clear_filter',
+            description: `Remove all filters from a layer, showing all features again. Use this when the user asks to "clear filters", "remove filters", "show all", or "reset" a layer. Available layers: ${allLayers.join(', ')}`,
+            inputSchema: {
+                type: 'object',
+                properties: {
+                    layer_id: {
+                        type: 'string',
+                        enum: allLayers,
+                        description: 'The ID of the layer to clear filters from.'
+                    }
+                },
+                required: ['layer_id']
+            },
+            execute: (args) => {
+                // Clear filter by passing null
+                const result = mapController.filterLayer(args.layer_id, null);
+                return JSON.stringify(result);
+            }
+        },
+        {
             name: 'style_layer',
             description: `Update a layer's style (paint properties).
             
