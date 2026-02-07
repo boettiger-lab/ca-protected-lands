@@ -31,7 +31,7 @@ export function generateTools(layerRegistry, mapController) {
     return [
         {
             name: 'add_layer',
-            description: `Add a visible layer to the map. Available layers: ${allLayers.join(', ')}`,
+            description: `Show/display/visualize a layer on the map. Use this when the user asks to "show", "display", "visualize", or "add" a layer. Available layers: ${allLayers.join(', ')}`,
             inputSchema: {
                 type: 'object',
                 properties: {
@@ -50,7 +50,7 @@ export function generateTools(layerRegistry, mapController) {
         },
         {
             name: 'remove_layer',
-            description: `Remove a layer from the map (hide it). Available layers: ${allLayers.join(', ')}`,
+            description: `Hide/remove a layer from the map. Use this when the user asks to "hide", "remove", or "turn off" a layer. Available layers: ${allLayers.join(', ')}`,
             inputSchema: {
                 type: 'object',
                 properties: {
@@ -69,7 +69,7 @@ export function generateTools(layerRegistry, mapController) {
         },
         {
             name: 'get_layer_info',
-            description: 'Get information about available layers and their current status (visible/hidden).',
+            description: 'List all available layers and check which layers are currently visible. Use this ONLY when the user explicitly asks "what layers are available?" or "which layers are visible?". Do NOT use this before adding a layer - just add it directly.',
             inputSchema: {
                 type: 'object',
                 properties: {},
