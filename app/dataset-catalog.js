@@ -85,6 +85,21 @@ export class DatasetCatalog {
      * Process a single STAC collection into a DatasetEntry.
      */
     processCollection(collection, options = {}) {
+        // Build asset allowlist and per-asset overrides from config
+        let allowedAssets = null;
+        const assetOptions = new Map();
+        if (Array.isArray(options.assets)) {
+            allowedAssets = new Set();
+            for (const a of options.assets) {
+                if (typeof a === 'string') {
+                    allowedAssets.add(a);
+                } else if (a && a.id) {
+                    allowedAssets.add(a.id);
+                    assetOptions.set(a.id, a);
+                }
+            }
+        }
+
         const entry = {
             id: collection.id,
             title: options.display_name || collection.title || collection.id,
@@ -98,10 +113,10 @@ export class DatasetCatalog {
             // Schema from table:columns
             columns: this.extractColumns(collection),
 
-            // Visual assets (for map display)
-            mapLayers: this.extractMapLayers(collection, options),
+            // Visual assets (for map display) — filtered by config
+            mapLayers: this.extractMapLayers(collection, options, allowedAssets, assetOptions),
 
-            // Parquet/H3 assets (for SQL via MCP)
+            // Parquet/H3 assets (for SQL via MCP) — always load all
             parquetAssets: this.extractParquetAssets(collection),
 
             // Raw STAC extent
@@ -117,32 +132,39 @@ export class DatasetCatalog {
     /**
      * Extract map-displayable assets (PMTiles and COGs).
      * Each becomes a potential map layer.
+     * @param {Object} collection - STAC collection
+     * @param {Object} options - Collection-level options
+     * @param {Set|null} allowedAssets - If set, only include these asset IDs
+     * @param {Map} assetOptions - Per-asset overrides keyed by asset ID
      */
-    extractMapLayers(collection, options = {}) {
+    extractMapLayers(collection, options = {}, allowedAssets = null, assetOptions = new Map()) {
         const layers = [];
         const assets = collection.assets || {};
 
         for (const [assetId, asset] of Object.entries(assets)) {
+            // Skip if an asset allowlist is specified and this asset isn't in it
+            if (allowedAssets && !allowedAssets.has(assetId)) continue;
+
             const type = asset.type || '';
+            const perAsset = assetOptions.get(assetId) || {};
 
             if (type.includes('pmtiles')) {
                 layers.push({
                     assetId,
                     layerType: 'vector',
-                    title: asset.title || assetId,
+                    title: perAsset.display_name || asset.title || assetId,
                     url: asset.href,
                     sourceLayer: asset['pmtiles:layer'] || assetId,
                     description: asset.description || '',
                 });
             } else if (type.includes('geotiff') || type.includes('tiff')) {
-                // Determine colormap and rescale from options or defaults
-                const colormap = options.colormap || 'reds';
-                const rescale = options.rescale || null;
+                const colormap = perAsset.colormap || options.colormap || 'reds';
+                const rescale = perAsset.rescale || options.rescale || null;
 
                 layers.push({
                     assetId,
                     layerType: 'raster',
-                    title: asset.title || assetId,
+                    title: perAsset.display_name || asset.title || assetId,
                     cogUrl: asset.href,
                     colormap,
                     rescale,
@@ -156,6 +178,9 @@ export class DatasetCatalog {
 
     /**
      * Extract parquet/H3 hex assets for SQL queries.
+     * All parquet assets are always loaded (no filtering) so the
+     * AI agent / DuckDB can query any available data.
+     * @param {Object} collection
      */
     extractParquetAssets(collection) {
         const assets = [];

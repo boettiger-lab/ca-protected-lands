@@ -57,14 +57,33 @@ Edit `layers-input.json`:
     "titiler_url": "https://titiler.nrp-nautilus.io",
     "mcp_url": "https://duckdb-mcp.nrp-nautilus.io/mcp",
     "view": { "center": [-119.4, 36.8], "zoom": 6 },
-    "collections": ["cpad-2025b", "irrecoverable-carbon"],
+    "collections": [
+        {
+            "collection_id": "cpad-2025b",
+            "assets": ["cpad-holdings-pmtiles", "cpad-units-pmtiles"]
+        },
+        {
+            "collection_id": "irrecoverable-carbon",
+            "assets": [
+                { "id": "irrecoverable-total-2018-cog", "display_name": "Irrecoverable Carbon (2018)" },
+                { "id": "manageable-total-2018-cog", "display_name": "Manageable Carbon (2018)" },
+                { "id": "vulnerable-total-2018-cog", "display_name": "Vulnerable Carbon (2018)" }
+            ]
+        }
+    ],
     "llm_models": [
         { "label": "GLM-4.7", "value": "glm-4.7", "endpoint": "https://llm-proxy.nrp-nautilus.io/v1", "api_key": "EMPTY" }
     ]
 }
 ```
 
-- **`collections`**: list of STAC collection IDs this app should load. Can be strings or objects with overrides.
+- **`collections`**: list of STAC collection IDs to load. Each entry is either:
+  - a **string** — loads all visual assets from that collection
+  - an **object** with `collection_id` and optional `assets` array to cherry-pick specific layers
+- **`assets`**: array of STAC asset IDs to show as map layers. Each entry is either:
+  - a **string** — the STAC asset ID (e.g. `"cpad-holdings-pmtiles"`)
+  - an **object** with `id` plus optional overrides: `display_name`, `colormap`, `rescale`
+- This filtering only affects **map layers** (PMTiles/COG toggles). All parquet/H3 assets remain available to the AI agent for SQL queries regardless.
 - **`llm_models`**: model selector entries. Each needs `endpoint` and `api_key`.
 
 ## Tool architecture
