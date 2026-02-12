@@ -42,6 +42,7 @@ data/**/*
 
 # Secrets and local config
 .env
+config.json
 config.local.json
 secrets.yaml
 

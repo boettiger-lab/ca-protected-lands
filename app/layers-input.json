@@ -1,6 +1,7 @@
 {
     "catalog": "https://s3-west.nrp-nautilus.io/public-data/stac/catalog.json",
     "titiler_url": "https://titiler.nrp-nautilus.io",
+    "mcp_url": "https://duckdb-mcp.nrp-nautilus.io/mcp",
     "view": {
         "center": [
             -119.4179,
@@ -8,27 +9,8 @@
         ],
         "zoom": 6
     },
-    "layers": [
-        {
-            "collection_id": "cpad-2025b",
-            "asset_id": "cpad-units-pmtiles",
-            "layer_key": "cpad",
-            "display_name": "California Protected Areas (CPAD)",
-            "options": {
-                "source_layer": "cpad-2025b-units"
-            },
-            "comment": "PMTiles vector layer - filterable properties will be auto-extracted from STAC"
-        },
-        {
-            "collection_id": "irrecoverable-carbon",
-            "asset_id": "vulnerable-total-2018-cog",
-            "layer_key": "carbon",
-            "display_name": "Vulnerable Carbon",
-            "options": {
-                "colormap": "reds",
-                "rescale": "0,100"
-            },
-            "comment": "COG raster layer - will be served via TiTiler"
-        }
+    "collections": [
+        "cpad-2025b",
+        "irrecoverable-carbon"
     ]
 }

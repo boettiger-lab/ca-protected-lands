@@ -8,102 +8,113 @@ This application provides an interactive map interface for exploring protected a
 
 ## Architecture
 
-### Frontend
-- **Map Visualization**: MapLibre GL JS renders vector tiles (PMTiles) and raster tiles (COG via TiTiler) directly from S3
-- **Dynamic Configuration**: Layers are configured at runtime by fetching STAC catalog metadata
-- **AI Chatbot**: LLM-powered interface using Model Context Protocol (MCP) tools for map control and data analysis
-
-### Backend
-- **MCP Data Server**: DuckDB-powered analytical backend that queries H3-indexed Parquet datasets
-- **STAC Catalog**: Metadata-driven layer discovery and configuration
-
-### Key Components
-
 ```
-User Input → Chatbot (chat.js) → MCP Tools → MapController → MapLibre GL JS
-                ↓
-          MCP Data Server (DuckDB queries on H3 Parquet)
-                ↓
-          STAC Catalog (layer metadata)
+layers-input.json           ← static config: STAC catalog, collection IDs, map view
+config.json (k8s-generated) ← deploy-time config: LLM models + API keys from secrets
+        │
+    ┌───▼────────────────┐
+    │  DatasetCatalog     │  Fetches STAC collections, builds unified records
+    └───┬───────┬────────┘
+        │       │
+  ┌─────▼──┐  ┌▼──────────┐
+  │MapMgr  │  │ToolRegistry│  Local map tools + remote MCP tools
+  └────────┘  └─────┬──────┘
+                    │
+               ┌────▼───┐
+               │ Agent   │  LLM orchestration loop (agentic tool-use)
+               └────┬───┘
+                    │
+               ┌────▼───┐
+               │ChatUI   │  Thin DOM shell (messages, tool blocks, model picker)
+               └────────┘
 ```
+
+### Data Sources
+
+Each dataset is available in two forms:
+- **Visual layer** (PMTiles or COG via TiTiler) — rendered on the map
+- **Parquet layer** (H3-indexed, on S3) — queried via DuckDB through MCP
+
+The STAC catalog at `s3-west.nrp-nautilus.io` is the single source of truth for metadata.
 
 ## Configuration
 
 ### Layer Configuration
 
-Layers are configured in [`app/layers-input.json`](app/layers-input.json). This file specifies which STAC collections to load:
+Layers are configured in [`app/layers-input.json`](app/layers-input.json):
 
 ```json
 {
     "catalog": "https://s3-west.nrp-nautilus.io/public-data/stac/catalog.json",
-    "layers": [
-        {
-            "collection_id": "cpad-2025b",
-            "asset_id": "cpad-units-pmtiles",
-            "layer_key": "cpad",
-            "display_name": "California Protected Areas"
-        }
-    ]
+    "titiler_url": "https://titiler.nrp-nautilus.io",
+    "mcp_url": "https://duckdb-mcp.nrp-nautilus.io/mcp",
+    "view": { "center": [-119.4, 36.8], "zoom": 6 },
+    "collections": ["cpad-2025b", "irrecoverable-carbon"]
 }
 ```
 
-On startup, the application:
-1. Fetches STAC collections
-2. Extracts layer properties from `table:columns`
-3. Generates tool definitions for the LLM
-4. Registers layers with the map
+Just list STAC collection IDs — assets, schemas, and display names are discovered from the catalog at runtime.
 
-See [`scripts/README.md`](scripts/README.md) for configuration details.
+### LLM / API Keys
+
+LLM models and API keys are injected at deploy time via the k8s ConfigMap (`config.json`). See [`k8s/README.md`](k8s/README.md).
 
 ## Development
 
 ### Prerequisites
-- Python 3.11+ (for local HTTP server)
-- Access to MCP data server (for analytical queries)
+- A modern browser with ES module support
+- Python 3 (for local HTTP server)
 
 ### Running Locally
 
 ```bash
-# Serve the app directory
-python -m http.server 8000 --directory app
+cd app && python -m http.server 8000
 ```
 
-Open [http://localhost:8000](http://localhost:8000) in your browser.
+For local development without k8s secrets, create `app/config.json` manually:
+```json
+{
+    "llm_models": [
+        { "value": "glm-4.7", "label": "GLM-4.7", "endpoint": "https://llm-proxy.nrp-nautilus.io/v1", "api_key": "EMPTY" }
+    ]
+}
+```
 
 ### Project Structure
 
 ```
 app/
-├── config-loader.js      # Runtime STAC metadata fetching
-├── layer-registry.js     # Layer metadata management
-├── map.js                # Map initialization & MapController
-├── chat.js               # LLM chatbot integration
-├── mcp-tools.js          # MCP tool definitions
-├── system-prompt.md      # LLM system prompt
-└── layers-input.json     # Layer configuration
-
-scripts/
-├── README.md             # Configuration guide
-└── layers-input-example.json
+├── main.js              # Bootstrap — wires all modules together
+├── dataset-catalog.js   # STAC catalog → unified dataset records
+├── map-manager.js       # MapLibre GL init + layer/filter/style API
+├── map-tools.js         # 9 local tools for the LLM agent
+├── tool-registry.js     # Unified registry for local + MCP tools
+├── mcp-client.js        # MCP transport wrapper (lazy reconnect)
+├── agent.js             # LLM orchestration loop (agentic tool-use)
+├── chat-ui.js           # Chat UI with collapsible tool blocks
+├── system-prompt.md     # Base LLM system prompt
+├── layers-input.json    # Static config (collections, view, URLs)
+├── index.html           # HTML shell
+├── style.css            # Map + layer control styles
+└── chat.css             # Chat interface styles
 
 k8s/
-└── README.md             # Deployment guide
+├── deployment.yaml      # Deployment with git-clone init container + nginx
+├── configmap-nginx.yaml # config.json template + nginx config
+├── service.yaml         # ClusterIP service
+├── ingress.yaml         # Ingress for ca-lands.nrp-nautilus.io
+└── README.md            # Deployment guide
 ```
 
 ## Deployment
 
-The application is deployed on Kubernetes. Changes are not automatically deployed.
+The application is deployed on Kubernetes using nginx to serve static files. An init container clones the repo on each pod start.
 
 ```bash
-# Trigger rollout after pushing changes
-kubectl rollout restart deployment/ca-protected-lands -n boettiger-lab
+# After pushing changes to main:
+kubectl rollout restart deployment/ca-lands
+kubectl rollout status deployment/ca-lands
 ```
 
-See [`k8s/README.md`](k8s/README.md) for detailed deployment instructions.
-
-## Data Sources
-
-- **CPAD**: [CAL FIRE / GreenInfo Network](https://www.calands.org/)
-- **STAC Catalog**: `https://s3-west.nrp-nautilus.io/public-data/stac/catalog.json`
-- **Storage**: S3-compatible object storage hosted at `s3-west.nrp-nautilus.io`
+See [`k8s/README.md`](k8s/README.md) for full deployment instructions.
 

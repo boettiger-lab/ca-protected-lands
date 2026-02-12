@@ -1,91 +1,91 @@
-# Wetlands MapLibre Application
+# Biodiversity Map Application
 
-An interactive web application combining MapLibre GL JS for geospatial visualization with an AI-powered chatbot that can analyze wetlands data and control map layers.
+Interactive map + AI data analyst for geospatial biodiversity data.  
+MapLibre GL JS on the front end, LLM-powered chat with MCP (Model Context Protocol) for SQL analytics.
 
-## Features
+## Architecture
 
-- **Interactive Map** with key California conservation datasets:
-  - Vulnerable Carbon Storage - raster COG
-  - Species Richness (biodiversity) - raster COG
-  - Protected Areas (WDPA/CPAD) - PMTiles polygons
+```
+layers-input.json   ← which STAC collections this app uses + LLM/MCP config
+        │
+    ┌───▼────────────────┐
+    │  DatasetCatalog     │  Fetches STAC, builds unified records
+    └───┬───────┬────────┘
+        │       │
+  ┌─────▼──┐  ┌▼──────────┐
+  │MapMgr  │  │ToolRegistry│  Local map tools + remote MCP tools
+  └────────┘  └─────┬──────┘
+                    │
+               ┌────▼───┐
+               │ Agent   │  LLM orchestration loop (agentic tool-use)
+               └────┬───┘
+                    │
+               ┌────▼───┐
+               │ChatUI   │  Thin DOM shell (messages, tool blocks, model picker)
+               └────────┘
+```
 
-- **AI Chatbot** powered by LLM + Model Context Protocol (MCP):
-  - Natural language queries about biodiversity data
-  - Statistical analysis using DuckDB on GeoParquet files
-  - Dynamic map layer control
-  - "Add Layer", "Filter Layer", and "Style Layer" capabilities
+### Modules
 
-- **Chatbot-Controlled Map Layers** - The chatbot can show, hide, filter, and style map layers based on conversation context.
+| File | Responsibility |
+|---|---|
+| `main.js` | Bootstrap — wires everything together |
+| `dataset-catalog.js` | Loads STAC collections, builds unified dataset records |
+| `map-manager.js` | Creates MapLibre map, manages layers/filters/styles |
+| `map-tools.js` | 9 local tools the LLM can call (show/hide/filter/style + dataset info) |
+| `tool-registry.js` | Unified registry for local + remote (MCP) tools, single dispatch |
+| `mcp-client.js` | MCP transport wrapper — connect, lazy reconnect, callTool |
+| `agent.js` | LLM orchestration loop — agentic while-loop with tool-use |
+| `chat-ui.js` | Chat UI with collapsible tool-call blocks |
+| `system-prompt.md` | Base system prompt (catalog appended at runtime) |
+| `layers-input.json` | App config: STAC catalog URL, collection IDs, LLM models |
+
+### Data flow
+
+1. **STAC catalog** is the single source of truth for dataset metadata
+2. Each STAC collection provides both **visual assets** (PMTiles/COG) and **parquet assets** (H3-indexed)
+3. The agent can **query parquet** via the MCP SQL tool and **control the map** via local tools
+4. Tool schemas are cleaned for broad LLM compatibility (handles `anyOf`, embedded XML tool calls, etc.)
+
+## Configuration
+
+Edit `layers-input.json`:
+
+```json
+{
+    "catalog": "https://s3-west.nrp-nautilus.io/public-data/stac/catalog.json",
+    "titiler_url": "https://titiler.nrp-nautilus.io",
+    "mcp_url": "https://duckdb-mcp.nrp-nautilus.io/mcp",
+    "view": { "center": [-119.4, 36.8], "zoom": 6 },
+    "collections": ["cpad-2025b", "irrecoverable-carbon"],
+    "llm_models": [
+        { "label": "GLM-4.7", "value": "glm-4.7", "endpoint": "https://llm-proxy.nrp-nautilus.io/v1", "api_key": "EMPTY" }
+    ]
+}
+```
+
+- **`collections`**: list of STAC collection IDs this app should load. Can be strings or objects with overrides.
+- **`llm_models`**: model selector entries. Each needs `endpoint` and `api_key`.
+
+## Tool architecture
+
+**Local tools** (auto-approved, instant):
+- `show_layer`, `hide_layer`, `set_filter`, `clear_filter`, `set_style`, `reset_style`, `get_map_state`
+- `list_datasets`, `get_dataset_details`
+
+**Remote tools** (require user approval):
+- `query(sql_query)` — DuckDB SQL via MCP server
+
+The agent runs an agentic loop: call LLM → if tool_calls → approve/execute → feed results → repeat.
+
+## Local development
+
+Serve the `app/` directory with any static file server:
+
+```bash
+cd app && python -m http.server 8000
+```
 
 ## Deployment
 
-This application is designed to be deployed on Kubernetes. See the [k8s directory](../k8s) for deployment manifests and instructions.
-
-The application expects a `config.json` file to be present at runtime. In the Kubernetes deployment, this file is generated automatically from a ConfigMap template (`k8s/configmap-nginx.yaml`) with environment variables injected.
-
-## Local Development
-
-The application is optimized for Kubernetes deployment. For local development, you can serve the `app` directory with a static file server, but you must manually create a `config.json` file (see `k8s/configmap-nginx.yaml` for structure) and ensure you have access to the necessary MCP servers and LLM endpoints.
-
-## Example Chatbot Queries
-
-- "Show me protected areas in California"
-- "Filter protected areas to show only those with IUCN Category Ia"
-- "Color the protected areas by ownership type"
-- "Show me places with high species richness for birds"
-- "What is the total carbon storage in protected areas?"
-
-**Layer Control:**
-The chatbot can programmatically control the map using tools:
-- `add_layer`: Show a layer
-- `remove_layer`: Hide a layer
-- `filter_layer`: Apply filters (e.g. specific species groups or vector attributes)
-- `style_layer`: Change visual styling (e.g. colors)
-
-## File Structure
-
-```
-app/
-├── index.html              # Main HTML page
-├── map.js                  # MapLibre map setup and MapController
-├── chat.js                 # Chatbot UI and MCP integration
-├── mcp-tools.js            # Generic MCP tool generation
-├── layer-registry.js       # Layer metadata management
-├── layers-config.json      # Layer configuration
-├── style.css               # Map styling
-├── chat.css                # Chatbot styling
-└── system-prompt.md        # Chatbot system prompt
-```
-
-## Data Sources
-
-All data is served from MinIO S3-compatible storage:
-
-- **Carbon**: Vulnerable Carbon Storage (raster COG)
-- **Species Richness**: Biodiversity richness layers (raster COG)
-- **WDPA**: World Database on Protected Areas (vector PMTiles)
-
-Data is stored as:
-- **COG** (Cloud-Optimized GeoTIFF) for raster layers
-- **PMTiles** for vector polygon layers
-- **GeoParquet** for tabular data accessed via MCP/DuckDB
-
-## Supported LLM Providers
-
-Any OpenAI-compatible API:
-- **OpenAI**: `https://api.openai.com/v1/chat/completions`
-- **Nautilus LLM Proxy**: `https://llm-proxy.nrp-nautilus.io/v1`
-
-
-## Development
-
-### Debugging
-
-Open browser console to see:
-- Layer loading events
-- Layer visibility changes
-- MCP communication
-
-## License
-
-See main project README for licensing information.
+See [k8s/](../k8s/) for Kubernetes manifests.
