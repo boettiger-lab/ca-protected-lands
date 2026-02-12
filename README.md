@@ -1,47 +1,88 @@
-# California Protected Lands
+# Geo-Chat: Map + AI Data Analyst
 
-A map-based application for exploring California's protected lands with an integrated LLM chatbot for natural language queries and analysis.
+A reusable JavaScript library for interactive map applications with LLM-powered data analysis. MapLibre GL JS on the front end, agentic tool-use with MCP (Model Context Protocol) for SQL analytics via DuckDB.
 
-## Overview
+**This repo is the core library.** Individual apps (different datasets, URLs, branding) import these modules from the CDN and provide their own configuration. See [`example/`](example/) for a complete client app template.
 
-This application provides an interactive map interface for exploring protected areas in California, powered by STAC (SpatioTemporal Asset Catalog) for dynamic layer configuration and DuckDB for analytical queries. Users can interact with the map through natural language using the integrated AI chatbot.
+## Quick start: create a new app
+
+1. Copy [`example/`](example/) into a new repo
+2. Edit `layers-input.json` — choose your STAC collections and assets
+3. Edit `index.html` — set page title, pin CDN version
+4. Deploy with `kubectl apply -f k8s/`
+
+See the [example README](example/README.md) for full details.
+
+## Using the CDN
+
+Client apps load the core modules directly from jsdelivr:
+
+```html
+<!-- Styles -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/boettiger-lab/ca-protected-lands@v1.0.0/app/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/boettiger-lab/ca-protected-lands@v1.0.0/app/chat.css">
+
+<!-- App (all modules resolve from CDN via relative imports) -->
+<script type="module" src="https://cdn.jsdelivr.net/gh/boettiger-lab/ca-protected-lands@v1.0.0/app/main.js"></script>
+```
+
+### Versioning
+
+| CDN reference | Behavior |
+|---|---|
+| `@v1.0.0` | Pinned — immutable, use for production |
+| `@main` | Tracks latest commit — use for staging/dev |
+
+**Releasing:** tag a commit on `main` → `git tag v1.1.0 && git push --tags` → all apps on `@main` get it immediately; production apps upgrade by changing their tag.
 
 ## Architecture
 
 ```
-layers-input.json           ← static config: STAC catalog, collection IDs, map view
-config.json (k8s-generated) ← deploy-time config: LLM models + API keys from secrets
-        │
-    ┌───▼────────────────┐
-    │  DatasetCatalog     │  Fetches STAC collections, builds unified records
-    └───┬───────┬────────┘
-        │       │
-  ┌─────▼──┐  ┌▼──────────┐
-  │MapMgr  │  │ToolRegistry│  Local map tools + remote MCP tools
-  └────────┘  └─────┬──────┘
-                    │
-               ┌────▼───┐
-               │ Agent   │  LLM orchestration loop (agentic tool-use)
-               └────┬───┘
-                    │
-               ┌────▼───┐
-               │ChatUI   │  Thin DOM shell (messages, tool blocks, model picker)
-               └────────┘
+                     ┌───────────────────────────────┐
+                     │  This repo (core library)     │
+                     │  served via CDN               │
+                     └──────────┬────────────────────┘
+                                │
+           ┌────────────────────┼────────────────────┐
+           │                    │                    │
+     ┌─────▼──────┐     ┌──────▼─────┐     ┌───────▼──────┐
+     │ App 1      │     │ App 2      │     │ App 3        │
+     │ ca-lands   │     │ wetlands   │     │ fire-risk    │
+     │            │     │            │     │              │
+     │ index.html │     │ index.html │     │ index.html   │
+     │ config     │     │ config     │     │ config       │
+     │ k8s/       │     │ k8s/       │     │ k8s/         │
+     └────────────┘     └────────────┘     └──────────────┘
 ```
 
-### Data Sources
+Each client app is a tiny repo (~5 files) that provides:
+- `index.html` — loads core JS/CSS from CDN, sets page title
+- `layers-input.json` — which STAC collections + assets to show
+- `system-prompt.md` — LLM personality and guidelines
+- `k8s/` — deployment manifests (hostname, replicas, secrets)
 
-Each dataset is available in two forms:
-- **Visual layer** (PMTiles or COG via TiTiler) — rendered on the map
-- **Parquet layer** (H3-indexed, on S3) — queried via DuckDB through MCP
+### Core modules (`app/`)
 
-The STAC catalog at `s3-west.nrp-nautilus.io` is the single source of truth for metadata.
+| File | Responsibility |
+|---|---|
+| `main.js` | Bootstrap — wires all modules together |
+| `dataset-catalog.js` | Loads STAC collections, builds unified dataset records |
+| `map-manager.js` | Creates MapLibre map, manages layers/filters/styles |
+| `map-tools.js` | 9 local tools the LLM can call (show/hide/filter/style + dataset info) |
+| `tool-registry.js` | Unified registry for local + remote (MCP) tools, single dispatch |
+| `mcp-client.js` | MCP transport wrapper — connect, lazy reconnect, callTool |
+| `agent.js` | LLM orchestration loop — agentic while-loop with tool-use |
+| `chat-ui.js` | Chat UI with collapsible tool-call blocks |
+
+### Data flow
+
+1. **STAC catalog** is the single source of truth for dataset metadata
+2. Each collection provides **visual assets** (PMTiles/COG for map) and **parquet assets** (H3-indexed for SQL)
+3. The agent can **query parquet** via the MCP SQL tool and **control the map** via local tools
 
 ## Configuration
 
-### Layer Configuration
-
-Layers are configured in [`app/layers-input.json`](app/layers-input.json):
+Client apps provide `layers-input.json`:
 
 ```json
 {
@@ -49,72 +90,44 @@ Layers are configured in [`app/layers-input.json`](app/layers-input.json):
     "titiler_url": "https://titiler.nrp-nautilus.io",
     "mcp_url": "https://duckdb-mcp.nrp-nautilus.io/mcp",
     "view": { "center": [-119.4, 36.8], "zoom": 6 },
-    "collections": ["cpad-2025b", "irrecoverable-carbon"]
+    "collections": [
+        {
+            "collection_id": "cpad-2025b",
+            "assets": ["cpad-holdings-pmtiles", "cpad-units-pmtiles"]
+        },
+        {
+            "collection_id": "irrecoverable-carbon",
+            "assets": [
+                { "id": "irrecoverable-total-2018-cog", "display_name": "Irrecoverable Carbon (2018)" },
+                { "id": "manageable-total-2018-cog", "display_name": "Manageable Carbon (2018)" }
+            ]
+        }
+    ]
 }
 ```
 
-Just list STAC collection IDs — assets, schemas, and display names are discovered from the catalog at runtime.
-
-### LLM / API Keys
-
-LLM models and API keys are injected at deploy time via the k8s ConfigMap (`config.json`). See [`k8s/README.md`](k8s/README.md).
+- **String** collection entries load all visual assets
+- **Object** entries with `assets` cherry-pick specific STAC asset IDs for map layers
+- Asset filtering only affects map toggles — all parquet/H3 data remains available for SQL
 
 ## Development
 
-### Prerequisites
-- A modern browser with ES module support
-- Python 3 (for local HTTP server)
-
-### Running Locally
+### Working on the core library
 
 ```bash
 cd app && python -m http.server 8000
 ```
 
-For local development without k8s secrets, create `app/config.json` manually:
-```json
-{
-    "llm_models": [
-        { "value": "glm-4.7", "label": "GLM-4.7", "endpoint": "https://llm-proxy.nrp-nautilus.io/v1", "api_key": "EMPTY" }
-    ]
-}
-```
+The `app/` directory includes its own `index.html`, `layers-input.json`, and `system-prompt.md` for local development. Changes here are what client apps consume via CDN.
 
-### Project Structure
+### Staging → Production workflow
 
-```
-app/
-├── main.js              # Bootstrap — wires all modules together
-├── dataset-catalog.js   # STAC catalog → unified dataset records
-├── map-manager.js       # MapLibre GL init + layer/filter/style API
-├── map-tools.js         # 9 local tools for the LLM agent
-├── tool-registry.js     # Unified registry for local + MCP tools
-├── mcp-client.js        # MCP transport wrapper (lazy reconnect)
-├── agent.js             # LLM orchestration loop (agentic tool-use)
-├── chat-ui.js           # Chat UI with collapsible tool blocks
-├── system-prompt.md     # Base LLM system prompt
-├── layers-input.json    # Static config (collections, view, URLs)
-├── index.html           # HTML shell
-├── style.css            # Map + layer control styles
-└── chat.css             # Chat interface styles
-
-k8s/
-├── deployment.yaml      # Deployment with git-clone init container + nginx
-├── configmap-nginx.yaml # config.json template + nginx config
-├── service.yaml         # ClusterIP service
-├── ingress.yaml         # Ingress for ca-lands.nrp-nautilus.io
-└── README.md            # Deployment guide
-```
+1. Push to `main` — staging apps (using `@main`) pick up changes on next load
+2. Test on staging
+3. Tag a release: `git tag v1.1.0 && git push --tags`
+4. Update production apps' importmap to `@v1.1.0`
 
 ## Deployment
 
-The application is deployed on Kubernetes using nginx to serve static files. An init container clones the repo on each pod start.
-
-```bash
-# After pushing changes to main:
-kubectl rollout restart deployment/ca-lands
-kubectl rollout status deployment/ca-lands
-```
-
-See [`k8s/README.md`](k8s/README.md) for full deployment instructions.
+The `k8s/` directory in this repo deploys the core library's own demo instance. See [`example/k8s/`](example/k8s/) for the client app deployment template.
 
